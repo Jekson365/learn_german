@@ -1,10 +1,14 @@
-from flask import Flask, request, jsonify,g
+from flask import Flask, request, jsonify, g, send_file
+from flask_cors import CORS
 from gtts import gTTS
 import sqlite3
 from objects.category import Category
+from objects.sound import Sound
 import os
 
+
 app = Flask(__name__)
+CORS(app)
 
 conn = sqlite3.connect('sounds.db')
 
@@ -26,27 +30,19 @@ def main():
 def create_sound():
     text = request.json.get('text')
     category_id = request.json.get('category_id')
+    meaning = request.json.get('meaning')
     db = get_db()
     cursor = db.cursor()
     try:
 
-        cursor.execute(f'INSERT INTO numbers (text,category_id) VALUES ("{text}","{category_id}")')
+        cursor.execute(f'INSERT INTO sounds (text,category_id,meaning) VALUES ("{text}","{category_id}","{meaning}")')
         db.commit()
         cursor.close()
 
         # save sound
 
         sound = gTTS(text=text, lang='de', slow=True)
-
-        if category_id == '1':
-            sound.save(f'./verbs/{text}.mp3')
-        if category_id == '2':
-            sound.save(f'./numbers/{text}.mp3')
-        if category_id == '3':
-            sound.save(f'./nouns/{text}.mp3')
-        if category_id == '4':
-            sound.save(f'./combinations/{text}.mp3')
-
+        sound.save(f'./sounds/{text}.mp3')
 
         return jsonify({'message':'saved successfully'})
 
@@ -73,12 +69,28 @@ def get_categories():
     categories = cursor.execute('SELECT * FROM category').fetchall()
     result = []
     for cat in categories:
-        print(cat)
         result.append(Category(cat[1],cat[0]).to_dict())
-
     db.commit()
     cursor.close()
     return jsonify({'categories':result})
-
+@app.route("/sounds",methods=['GET'])
+def get_sounds():
+    db = get_db()
+    cursor = db.cursor()
+    result = []
+    sounds = cursor.execute('SELECT * FROM sounds').fetchall()
+    for sound in sounds:
+        obj = Sound(sound[0],sound[1],sound[2],sound[3]).to_dict()
+        result.append(obj)
+    db.commit()
+    cursor.close()
+    return {"sounds":result}
+@app.route("/sounds/<filename>",methods=['GET'])
+def get_sound(filename):
+    print(filename)
+    db = get_db()
+    cursor = db.cursor()
+    result = cursor.execute(f'SELECT * FROM sounds where text = "{filename}"').fetchall()
+    return send_file(f'./sounds/{result[0][1]}.mp3')
 if __name__ == "__main__":
     app.run(debug=True)
