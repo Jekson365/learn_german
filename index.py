@@ -73,24 +73,27 @@ def get_categories():
     db.commit()
     cursor.close()
     return jsonify({'categories':result})
-@app.route("/sounds",methods=['GET'])
-def get_sounds():
+@app.route("/sounds/<catid>",methods=['GET'])
+def get_sounds(catid):
     db = get_db()
     cursor = db.cursor()
     result = []
-    sounds = cursor.execute('SELECT * FROM sounds').fetchall()
+    sounds = cursor.execute(f'SELECT * FROM sounds WHERE category_id="{catid}"').fetchall()
     for sound in sounds:
         obj = Sound(sound[0],sound[1],sound[2],sound[3]).to_dict()
         result.append(obj)
+
     db.commit()
     cursor.close()
     return {"sounds":result}
-@app.route("/sounds/<filename>",methods=['GET'])
+@app.route("/sound/<filename>",methods=['GET'])
 def get_sound(filename):
     print(filename)
     db = get_db()
     cursor = db.cursor()
     result = cursor.execute(f'SELECT * FROM sounds where text = "{filename}"').fetchall()
+    print(result)
     return send_file(f'./sounds/{result[0][1]}.mp3')
+
 if __name__ == "__main__":
     app.run(debug=True)
